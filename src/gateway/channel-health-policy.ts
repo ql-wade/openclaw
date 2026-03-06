@@ -28,6 +28,7 @@ export type ChannelHealthEvaluation = {
 };
 
 export type ChannelHealthPolicy = {
+  channelId?: string;
   now: number;
   staleEventThresholdMs: number;
   channelConnectGraceMs: number;
@@ -97,6 +98,11 @@ export function evaluateChannelHealth(
   if (snapshot.connected === false) {
     return { healthy: false, reason: "disconnected" };
   }
+  // Skip stale-socket check for Telegram (long-polling mode). Each polling request
+  // acts as a heartbeat, so the half-dead WebSocket scenario this check is designed
+  // to catch does not apply to Telegram's long-polling architecture.
+  if (policy.channelId !== "telegram") {
+
   if (snapshot.lastEventAt != null || snapshot.lastStartAt != null) {
     const upSince = snapshot.lastStartAt ?? 0;
     const upDuration = policy.now - upSince;
@@ -107,6 +113,7 @@ export function evaluateChannelHealth(
         return { healthy: false, reason: "stale-socket" };
       }
     }
+  }
   }
   return { healthy: true, reason: "healthy" };
 }
