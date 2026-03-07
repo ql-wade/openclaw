@@ -272,6 +272,7 @@ export async function summarizeWithFallback(params: {
   customInstructions?: string;
   summarizationInstructions?: CompactionSummarizationInstructions;
   previousSummary?: string;
+  allowSyntheticToolResults?: boolean;
 }): Promise<string> {
   const { messages, contextWindow } = params;
 
