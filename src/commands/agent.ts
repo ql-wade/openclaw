@@ -154,35 +154,43 @@ function prependInternalEventContext(
   return [renderedEvents, body].filter(Boolean).join("\n\n");
 }
 
-function appendUniqueSuffix(base: string, suffix: string): { text: string; delta: string } {
-  if (!suffix) {
-    return { text: base, delta: "" };
-  }
-  if (!base) {
-    return { text: suffix, delta: suffix };
-  }
-  if (base.endsWith(suffix)) {
-    return { text: base, delta: "" };
-  }
-  const maxOverlap = Math.min(base.length, suffix.length);
-  for (let overlap = maxOverlap; overlap > 0; overlap -= 1) {
-    if (base.slice(-overlap) === suffix.slice(0, overlap)) {
-      const delta = suffix.slice(overlap);
-      return {
-        text: `${base}${delta}`,
-        delta,
-      };
-    }
-  }
-  return {
-    text: `${base}${suffix}`,
-    delta: suffix,
-  };
-}
-
 function createAcpVisibleTextAccumulator() {
   let pendingSilentPrefix = "";
   let visibleText = "";
+  const startsWithWordChar = (chunk: string): boolean => /^[\p{L}\p{N}]/u.test(chunk);
+
+  const resolveNextCandidate = (base: string, chunk: string): string => {
+    if (!base) {
+      return chunk;
+    }
+    if (
+      isSilentReplyText(base, SILENT_REPLY_TOKEN) &&
+      !chunk.startsWith(base) &&
+      startsWithWordChar(chunk)
+    ) {
+      return chunk;
+    }
+    // Some ACP backends emit cumulative snapshots even on text_delta-style hooks.
+    // Accept those only when they strictly extend the buffered text.
+    if (chunk.startsWith(base) && chunk.length > base.length) {
+      return chunk;
+    }
+    return `${base}${chunk}`;
+  };
+
+  const mergeVisibleChunk = (base: string, chunk: string): { text: string; delta: string } => {
+    if (!base) {
+      return { text: chunk, delta: chunk };
+    }
+    if (chunk.startsWith(base) && chunk.length > base.length) {
+      const delta = chunk.slice(base.length);
+      return { text: chunk, delta };
+    }
+    return {
+      text: `${base}${chunk}`,
+      delta: chunk,
+    };
+  };
 
   return {
     consume(chunk: string): { text: string; delta: string } | null {
@@ -191,30 +199,26 @@ function createAcpVisibleTextAccumulator() {
       }
 
       if (!visibleText) {
-        const leadCandidate = appendUniqueSuffix(pendingSilentPrefix, chunk);
-        const trimmedLeadCandidate = leadCandidate.text.trim();
+        const leadCandidate = resolveNextCandidate(pendingSilentPrefix, chunk);
+        const trimmedLeadCandidate = leadCandidate.trim();
         if (
           isSilentReplyText(trimmedLeadCandidate, SILENT_REPLY_TOKEN) ||
           isSilentReplyPrefixText(trimmedLeadCandidate, SILENT_REPLY_TOKEN)
         ) {
-          pendingSilentPrefix = leadCandidate.text;
+          pendingSilentPrefix = leadCandidate;
           return null;
         }
         if (pendingSilentPrefix) {
-          const visibleDelta = leadCandidate.text.startsWith(pendingSilentPrefix)
-            ? leadCandidate.text.slice(pendingSilentPrefix.length)
-            : chunk;
           pendingSilentPrefix = "";
-          if (!visibleDelta) {
-            return null;
-          }
-          const nextVisible = appendUniqueSuffix(visibleText, visibleDelta);
-          visibleText = nextVisible.text;
-          return nextVisible.delta ? nextVisible : null;
+          visibleText = leadCandidate;
+          return {
+            text: visibleText,
+            delta: leadCandidate,
+          };
         }
       }
 
-      const nextVisible = appendUniqueSuffix(visibleText, chunk);
+      const nextVisible = mergeVisibleChunk(visibleText, chunk);
       visibleText = nextVisible.text;
       return nextVisible.delta ? nextVisible : null;
     },

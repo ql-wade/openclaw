@@ -285,6 +285,99 @@ describe("agentCommand ACP runtime routing", () => {
     });
   });
 
+  it("preserves repeated identical ACP delta chunks", async () => {
+    await withTempHome(async (home) => {
+      const storePath = path.join(home, "sessions.json");
+      writeAcpSessionStore(storePath);
+      mockConfig(home, storePath);
+
+      const assistantEvents: Array<{ text?: string; delta?: string }> = [];
+      const stop = onAgentEvent((evt) => {
+        if (evt.stream !== "assistant") {
+          return;
+        }
+        assistantEvents.push({
+          text: typeof evt.data?.text === "string" ? evt.data.text : undefined,
+          delta: typeof evt.data?.delta === "string" ? evt.data.delta : undefined,
+        });
+      });
+
+      const runTurn = vi.fn(async (paramsUnknown: unknown) => {
+        const params = paramsUnknown as {
+          onEvent?: (event: { type: string; text?: string; stopReason?: string }) => Promise<void>;
+        };
+        for (const text of ["b", "o", "o", "k"]) {
+          await params.onEvent?.({ type: "text_delta", text });
+        }
+        await params.onEvent?.({ type: "done", stopReason: "stop" });
+      });
+
+      mockAcpManager({
+        runTurn: (params: unknown) => runTurn(params),
+      });
+
+      try {
+        await agentCommand({ message: "ping", sessionKey: "agent:codex:acp:test" }, runtime);
+      } finally {
+        stop();
+      }
+
+      expect(assistantEvents).toEqual([
+        { text: "b", delta: "b" },
+        { text: "bo", delta: "o" },
+        { text: "boo", delta: "o" },
+        { text: "book", delta: "k" },
+      ]);
+
+      const logLines = vi.mocked(runtime.log).mock.calls.map(([first]) => String(first));
+      expect(logLines.some((line) => line.includes("book"))).toBe(true);
+    });
+  });
+
+  it("re-emits buffered NO prefix when ACP text becomes visible content", async () => {
+    await withTempHome(async (home) => {
+      const storePath = path.join(home, "sessions.json");
+      writeAcpSessionStore(storePath);
+      mockConfig(home, storePath);
+
+      const assistantEvents: Array<{ text?: string; delta?: string }> = [];
+      const stop = onAgentEvent((evt) => {
+        if (evt.stream !== "assistant") {
+          return;
+        }
+        assistantEvents.push({
+          text: typeof evt.data?.text === "string" ? evt.data.text : undefined,
+          delta: typeof evt.data?.delta === "string" ? evt.data.delta : undefined,
+        });
+      });
+
+      const runTurn = vi.fn(async (paramsUnknown: unknown) => {
+        const params = paramsUnknown as {
+          onEvent?: (event: { type: string; text?: string; stopReason?: string }) => Promise<void>;
+        };
+        for (const text of ["NO", "W"]) {
+          await params.onEvent?.({ type: "text_delta", text });
+        }
+        await params.onEvent?.({ type: "done", stopReason: "stop" });
+      });
+
+      mockAcpManager({
+        runTurn: (params: unknown) => runTurn(params),
+      });
+
+      try {
+        await agentCommand({ message: "ping", sessionKey: "agent:codex:acp:test" }, runtime);
+      } finally {
+        stop();
+      }
+
+      expect(assistantEvents).toEqual([{ text: "NOW", delta: "NOW" }]);
+
+      const logLines = vi.mocked(runtime.log).mock.calls.map(([first]) => String(first));
+      expect(logLines.some((line) => line.includes("NOW"))).toBe(true);
+    });
+  });
+
   it("fails closed for ACP-shaped session keys missing ACP metadata", async () => {
     await withTempHome(async (home) => {
       const storePath = path.join(home, "sessions.json");
