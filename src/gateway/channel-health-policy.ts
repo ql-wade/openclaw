@@ -1,3 +1,5 @@
+import type { ChannelId } from "../channels/plugins/types.js";
+
 export type ChannelHealthSnapshot = {
   running?: boolean;
   connected?: boolean;
@@ -28,7 +30,7 @@ export type ChannelHealthEvaluation = {
 };
 
 export type ChannelHealthPolicy = {
-  channelId: string;
+  channelId: ChannelId;
   now: number;
   staleEventThresholdMs: number;
   channelConnectGraceMs: number;
