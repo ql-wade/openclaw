@@ -21,15 +21,20 @@ export function verifySlackSignature(params: {
 
   // Compute HMAC-SHA256
   const hmac = crypto.createHmac("sha256", signingSecret);
-  const baseString = `${timestamp}:${body}`;
+  const baseString = `v0:${timestamp}:${body}`;
   hmac.update(baseString);
   const computedSignature = `v0=${hmac.digest("hex")}`;
 
   // Compare signatures using constant-time comparison
-  return crypto.timingSafeEqual(
-    Buffer.from(computedSignature),
-    Buffer.from(signature),
-  );
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(computedSignature),
+      Buffer.from(signature),
+    );
+  } catch {
+    // timingSafeEqual throws RangeError if buffer lengths differ
+    return false;
+  }
 }
 
 /**

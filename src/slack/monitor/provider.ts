@@ -23,6 +23,7 @@ import { createConnectedChannelStatusPatch } from "../../gateway/channel-status-
 import { warn } from "../../globals.js";
 import { computeBackoff, sleepWithAbort } from "../../infra/backoff.js";
 import { installRequestBodyLimitGuard, readRequestBodyWithLimit } from "../../infra/http-body.js";
+import { extractSlackSignatureHeaders, verifySlackSignature } from "./slack-signature.js";
 import { normalizeMainKey } from "../../routing/session-key.js";
 import { createNonExitingRuntime, type RuntimeEnv } from "../../runtime.js";
 import { normalizeStringEntries } from "../../shared/string-normalization.js";
@@ -248,19 +249,27 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
             }
             
             // For other requests, verify signature manually (HTTPReceiver expects unsigned body)
+            // url_verification is already handled above; all other requests MUST have valid signatures
             const { signature, timestamp } = extractSlackSignatureHeaders(req);
-            if (signature && timestamp !== undefined && signingSecret) {
-              const isValid = verifySlackSignature({
-                signingSecret,
-                body: rawBody,
-                signature,
-                timestamp,
-              });
-              if (!isValid) {
-                res.writeHead(401);
-                res.end("Invalid signature");
-                return;
-              }
+            
+            // Reject requests without signature headers (except url_verification which was handled above)
+            if (!signature || timestamp === undefined) {
+              res.writeHead(401);
+              res.end("Missing signature");
+              return;
+            }
+            
+            // Verify signature
+            const isValid = verifySlackSignature({
+              signingSecret,
+              body: rawBody,
+              signature,
+              timestamp,
+            });
+            if (!isValid) {
+              res.writeHead(401);
+              res.end("Invalid signature");
+              return;
             }
             
             // Manually create buffered request with cached body for HTTPReceiver
