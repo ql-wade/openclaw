@@ -45,6 +45,7 @@ Docs: https://docs.openclaw.ai
 - Podman/SELinux: auto-detect SELinux enforcing/permissive mode and add `:Z` relabel to bind mounts in `run-openclaw-podman.sh` and the Quadlet template, fixing `EACCES` on Fedora/RHEL hosts. Supports `OPENCLAW_BIND_MOUNT_OPTIONS` override. (#39449) Thanks @langdon and @githubbzxs.
 - TUI/theme: detect light terminal backgrounds via `COLORFGBG` and pick a WCAG AA-compliant light palette, with `OPENCLAW_THEME=light|dark` override for terminals without auto-detection. (#38636) Thanks @ademczuk and @vincentkoc.
 - Agents/context-engine plugins: bootstrap runtime plugins once at embedded-run, compaction, and subagent boundaries so plugin-provided context engines and hooks load from the active workspace before runtime resolution. (#40232)
+- Voice-call/OpenAI TTS: add `speed` (0.25–4.0) and `instructions` fields to the plugin JSON schema and core Zod schema so config validation accepts parameters already supported by the OpenAI TTS runtime. (#39226)
 
 ## 2026.3.7
 

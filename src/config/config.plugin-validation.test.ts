@@ -335,4 +335,28 @@ describe("config plugin validation", () => {
       ).toBe(true);
     }
   });
-});
+
+  it("accepts voice-call OpenAI TTS speed and instructions config fields", async () => {
+    const res = validateInSuite({
+      agents: { list: [{ id: "pi" }] },
+      plugins: {
+        enabled: true,
+        load: { paths: [voiceCallSchemaPluginDir] },
+        entries: {
+          "voice-call-schema-fixture": {
+            config: {
+              tts: {
+                provider: "openai",
+                openai: {
+                  voice: "alloy",
+                  speed: 1.5,
+                  instructions: "Speak in a cheerful tone",
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    expect(res.ok).toBe(true);
+  });
