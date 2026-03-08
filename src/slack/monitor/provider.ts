@@ -191,6 +191,7 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
       ? new HTTPReceiver({
           signingSecret: signingSecret ?? "",
           endpoints: slackWebhookPath,
+          signatureVerification: false,
         })
       : null;
   const clientOptions = resolveSlackWebClientOptions();
@@ -220,14 +221,14 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
             return;
           }
           try {
-            // Slack url_verification challenge requests don't include signatures
-            // We need to handle them before the HTTPReceiver's signature verification
+            // Read and cache the request body
             const rawBody = await readRequestBodyWithLimit(req, {
               maxBytes: SLACK_WEBHOOK_MAX_BODY_BYTES,
               timeoutMs: SLACK_WEBHOOK_BODY_TIMEOUT_MS,
             });
-            const contentType = req.headers["content-type"] || "";
             
+            // Parse body to check for url_verification
+            const contentType = req.headers["content-type"] || "";
             let body: { [key: string]: unknown } | unknown;
             if (contentType.includes("application/x-www-form-urlencoded")) {
               body = parseQueryString(rawBody);
@@ -239,14 +240,33 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
               }
             }
             
-            // Handle url_verification challenge (no signature)
-            if (body?.type === "url_verification") {
+            // Handle url_verification challenge (no signature required)
+            if (body && typeof body === "object" && "type" in body && body.type === "url_verification") {
               res.writeHead(200, { "content-type": "application/json" });
-              res.end(JSON.stringify({ challenge: body.challenge }));
+              res.end(JSON.stringify({ challenge: (body as { challenge: string }).challenge }));
               return;
             }
             
-            // Delegate to HTTPReceiver for all other requests
+            // For other requests, verify signature manually (HTTPReceiver expects unsigned body)
+            const { signature, timestamp } = extractSlackSignatureHeaders(req);
+            if (signature && timestamp !== undefined && signingSecret) {
+              const isValid = verifySlackSignature({
+                signingSecret,
+                body: rawBody,
+                signature,
+                timestamp,
+              });
+              if (!isValid) {
+                res.writeHead(401);
+                res.end("Invalid signature");
+                return;
+              }
+            }
+            
+            // Manually create buffered request with cached body for HTTPReceiver
+            (req as { rawBody: Buffer }).rawBody = Buffer.from(rawBody);
+            
+            // Delegate to HTTPReceiver (signature verification is disabled)
             await Promise.resolve(receiver.requestListener(req, res));
           } catch (err) {
             if (!guard.isTripped()) {
