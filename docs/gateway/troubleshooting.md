@@ -364,3 +364,118 @@ Related:
 - [/gateway/pairing](/gateway/pairing)
 - [/gateway/authentication](/gateway/authentication)
 - [/gateway/background-process](/gateway/background-process)
+
+## LaunchAgent timezone missing
+
+On macOS, if the gateway runs via LaunchAgent but the agent reports the wrong day or date, the TZ environment variable may be missing from the service plist.
+
+```bash
+openclaw gateway status
+openclaw logs --follow
+cat ~/Library/LaunchAgents/com.openclaw.gateway.plist
+```
+
+Look for:
+
+- LaunchAgent plist lacks `<key>TZ</key>` entry.
+- Agent responses include timestamps or day names that are off by hours.
+- System timezone is correct (`systemsetup -gettimezone`), but the agent disagrees.
+
+Fix:
+
+Edit the LaunchAgent plist and add the TZ environment variable before loading:
+
+```bash
+# Get current timezone
+tz=$(systemsetup -gettimezone | awk '{print $3}')
+
+# Add TZ to the plist (example)
+# <key>EnvironmentVariables</key>
+# <dict>
+#   <key>TZ</key>
+#   <string>America/Los_Angeles</string>
+# </dict>
+
+# Reload the service
+launchctl unload ~/Library/LaunchAgents/com.openclaw.gateway.plist
+launchctl load ~/Library/LaunchAgents/com.openclaw.gateway.plist
+```
+
+Related:
+
+- [/gateway/background-process](/gateway/background-process)
+
+## Built-in plugins in plugins.entries
+
+After upgrading, the gateway may fail to start if `plugins.entries` explicitly lists built-in plugins. Built-in plugins (e.g., memory, skills) are loaded automatically and must not be added to `plugins.entries`.
+
+```bash
+openclaw logs --follow
+openclaw config get plugins.entries
+openclaw doctor
+```
+
+Look for:
+
+- Logs like `plugin "memory" is built-in and cannot be configured via plugins.entries`.
+- Gateway exits immediately during startup with plugin-related errors.
+- `plugins.entries` includes entries for `memory`, `skills`, or other bundled plugins.
+
+Fix:
+
+Remove built-in plugin entries from `plugins.entries` in your config:
+
+```bash
+openclaw config edit
+# Remove lines like:
+#   "memory": { ... },
+#   "skills": { ... }
+```
+
+Only external/extension plugins should appear in `plugins.entries`.
+
+Related:
+
+- [/tools/skills-config](/tools/skills-config)
+- [/gateway/configuration](/gateway/configuration)
+
+## Default model must be explicit
+
+If `agents.defaults.model.primary` is not set explicitly, the agent runtime may fail to resolve a model at startup, resulting in errors like "no model configured" or "model resolution failed".
+
+```bash
+openclaw config get agents.defaults.model.primary
+openclaw models status
+openclaw doctor
+```
+
+Look for:
+
+- `agents.defaults.model.primary` is unset or empty.
+- Logs show `no model configured` or `model resolution failed`.
+- `openclaw models status` shows available models, but the agent does not pick one.
+
+Fix:
+
+Set an explicit primary model in your config:
+
+```bash
+openclaw config set agents.defaults.model.primary "anthropic/claude-opus-4-6"
+# or via config file:
+# {
+#   "agents": {
+#     "defaults": {
+#       "model": {
+#         "primary": "anthropic/claude-opus-4-6"
+#       }
+#     }
+#   }
+# }
+```
+
+Do not rely on implicit defaults; always configure the primary model explicitly for stable behavior.
+
+Related:
+
+- [/concepts/models](/concepts/models)
+- [/gateway/configuration](/gateway/configuration)
