@@ -254,7 +254,7 @@ export async function resolveTelegramInboundBody(params: {
   const effectiveWasMentioned = mentionGate.effectiveWasMentioned;
   if (isGroup && requireMention && canDetectMention && mentionGate.shouldSkip) {
     logVerbose(
-      `telegram: message dropped by mention gating (chat=${chatId} topic=${resolvedThreadId ?? "none"} requireMention=${requireMention} wasMentioned=${wasMentioned})`
+      `telegram: message dropped by mention gating (chat=${chatId} topic=${resolvedThreadId ?? "none"} requireMention=${requireMention} wasMentioned=${wasMentioned})`,
     );
     recordPendingHistoryEntryIfEnabled({
       historyMap: groupHistories,
