@@ -276,13 +276,19 @@ function ensureValidOllamaProviderForApiKeySet(
   });
 }
 
-export async function runConfigGet(opts: { path: string; json?: boolean; runtime?: RuntimeEnv }) {
+export async function runConfigGet(opts: {
+  path: string;
+  json?: boolean;
+  noRedact?: boolean;
+  runtime?: RuntimeEnv;
+}) {
   const runtime = opts.runtime ?? defaultRuntime;
   try {
     const parsedPath = parseRequiredPath(opts.path);
     const snapshot = await loadValidConfig(runtime);
-    const redacted = redactConfigObject(snapshot.config);
-    const res = getAtPath(redacted, parsedPath);
+    const source = opts.noRedact ? snapshot.config : redactConfigObject(snapshot.config);
+    const res = getAtPath(source, parsedPath);
+
     if (!res.found) {
       runtime.error(danger(`Config path not found: ${opts.path}`));
       runtime.exit(1);
@@ -419,8 +425,11 @@ export function registerConfigCli(program: Command) {
     .description("Get a config value by dot path")
     .argument("<path>", "Config path (dot or bracket notation)")
     .option("--json", "Output JSON", false)
+    .option("--no-redact", "Show sensitive values (default: redacted)", false)
     .action(async (path: string, opts) => {
-      await runConfigGet({ path, json: Boolean(opts.json) });
+      // Commander.js --no-XXX options create a XXX property that is true by default and false when --no-XXX is passed
+      const noRedact = !opts.redact;
+      await runConfigGet({ path, json: Boolean(opts.json), noRedact });
     });
 
   cmd

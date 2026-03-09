@@ -91,8 +91,7 @@ describe("program routes", () => {
         "--json",
       ]),
     ).resolves.toBe(true);
-    expect(runConfigGetMock).toHaveBeenCalledWith({ path: "update.channel", json: true });
-  });
+    expect(runConfigGetMock).toHaveBeenCalledWith({ path: "update.channel", json: true, noRedact: false });
 
   it("passes config unset path correctly when root option values precede command", async () => {
     const route = expectRoute(["config", "unset"]);
@@ -116,9 +115,23 @@ describe("program routes", () => {
         "--json",
       ]),
     ).resolves.toBe(true);
-    expect(runConfigGetMock).toHaveBeenCalledWith({ path: "update.channel", json: true });
+    expect(runConfigGetMock).toHaveBeenCalledWith({ path: "update.channel", json: true, noRedact: false });
   });
 
+  it("passes --no-redact flag for config get", async () => {
+    const route = expectRoute(["config", "get"]);
+    await expect(
+      route?.run([
+        "node",
+        "openclaw",
+        "config",
+        "get",
+        "gateway.auth.token",
+        "--no-redact",
+      ]),
+    ).resolves.toBe(true);
+    expect(runConfigGetMock).toHaveBeenCalledWith({ path: "gateway.auth.token", json: false, noRedact: true });
+  });
   it("passes config unset path when root value options appear after subcommand", async () => {
     const route = expectRoute(["config", "unset"]);
     await expect(
