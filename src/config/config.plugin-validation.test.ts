@@ -360,3 +360,4 @@ describe("config plugin validation", () => {
     });
     expect(res.ok).toBe(true);
   });
+});
