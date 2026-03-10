@@ -128,7 +128,7 @@ export async function resolveGatewayRuntimeConfig(params: {
   if (tailscaleMode === "funnel" && authMode !== "password") {
     throw new Error(
       "tailscale funnel requires gateway auth mode=password (set gateway.auth.password or OPENCLAW_GATEWAY_PASSWORD). " +
-        'Fix: add to openclaw.json: {"gateway":{"auth":{"mode":"password","password":"your-password"}}} or run: OPENCLAW_GATEWAY_PASSWORD=your-password openclaw gateway run',
+        'Fix: add to openclaw.json: {"gateway":{"auth":{"mode":"password","password":"<YOUR_PASSWORD>"}}} or run: OPENCLAW_GATEWAY_PASSWORD=<YOUR_PASSWORD> openclaw gateway run',
     );
   }
   if (tailscaleMode !== "off" && !isLoopbackHost(bindHost)) {
