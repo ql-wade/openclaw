@@ -17,8 +17,13 @@ export function stripTelegramInternalPrefixes(to: string): string {
         return trimmed.replace(/^(telegram|tg):/i, "").trim();
       }
       // Legacy internal form: `telegram:group:<id>` (still emitted by session keys).
-      if (strippedTelegramPrefix && /^group:/i.test(trimmed)) {
-        return trimmed.replace(/^group:/i, "").trim();
+      // Also handle bare `group:<numeric_id>` for delivery-only targets.
+      if (/^group:/i.test(trimmed)) {
+        const afterGroup = trimmed.replace(/^group:/i, "").trim();
+        // Only strip if followed by telegram prefix OR if it's a bare numeric chat id
+        if (strippedTelegramPrefix || TELEGRAM_NUMERIC_CHAT_ID_REGEX.test(afterGroup)) {
+          return afterGroup;
+        }
       }
       return trimmed;
     })();

@@ -16,8 +16,14 @@ describe("stripTelegramInternalPrefixes", () => {
     expect(stripTelegramInternalPrefixes("telegram:group:-100123")).toBe("-100123");
   });
 
-  it("does not strip group prefix without telegram prefix", () => {
-    expect(stripTelegramInternalPrefixes("group:-100123")).toBe("group:-100123");
+  it("strips bare delivery-only group prefix for numeric chat ids", () => {
+    expect(stripTelegramInternalPrefixes("group:-100123")).toBe("-100123");
+    expect(stripTelegramInternalPrefixes("group:123456789")).toBe("123456789");
+  });
+
+  it("does not strip group prefix for non-numeric targets", () => {
+    expect(stripTelegramInternalPrefixes("group:@channel")).toBe("group:@channel");
+    expect(stripTelegramInternalPrefixes("group:mychannel")).toBe("group:mychannel");
   });
 
   it("is idempotent", () => {
@@ -88,6 +94,11 @@ describe("normalizeTelegramChatId", () => {
     expect(normalizeTelegramChatId("MyChannel")).toBeUndefined();
   });
 
+  it("normalizes bare delivery-only group prefixes for numeric chat ids", () => {
+    expect(normalizeTelegramChatId("group:-1001234567890")).toBe("-1001234567890");
+    expect(normalizeTelegramChatId("group:123456789")).toBe("123456789");
+  });
+
   it("keeps numeric chat ids unchanged", () => {
     expect(normalizeTelegramChatId("-1001234567890")).toBe("-1001234567890");
     expect(normalizeTelegramChatId("123456789")).toBe("123456789");
@@ -104,6 +115,11 @@ describe("normalizeTelegramLookupTarget", () => {
     expect(normalizeTelegramLookupTarget("tg:t.me/mychannel")).toBe("@mychannel");
     expect(normalizeTelegramLookupTarget("@MyChannel")).toBe("@MyChannel");
     expect(normalizeTelegramLookupTarget("MyChannel")).toBe("@MyChannel");
+  });
+
+  it("normalizes bare delivery-only group prefixes for numeric chat ids", () => {
+    expect(normalizeTelegramLookupTarget("group:-1001234567890")).toBe("-1001234567890");
+    expect(normalizeTelegramLookupTarget("group:123456789")).toBe("123456789");
   });
 
   it("keeps numeric chat ids unchanged", () => {
