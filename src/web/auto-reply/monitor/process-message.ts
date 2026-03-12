@@ -326,6 +326,7 @@ export async function processMessage(params: {
     SenderE164: params.msg.senderE164,
     CommandAuthorized: commandAuthorized,
     WasMentioned: params.msg.wasMentioned,
+    Timestamp: params.msg.timestamp,
     ...(params.msg.location ? toLocationContext(params.msg.location) : {}),
     Provider: "whatsapp",
     Surface: "whatsapp",
