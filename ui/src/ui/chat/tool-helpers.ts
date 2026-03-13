@@ -2,7 +2,7 @@
  * Helper functions for tool card rendering.
  */
 
-import { PREVIEW_MAX_CHARS, PREVIEW_MAX_LINES } from "./constants.ts";
+import { PREVIEW_MAX_CHARS, PREVIEW_MAX_LINES, TOOL_INLINE_THRESHOLD } from "./constants.js";
 
 /**
  * Format tool output content for display in the sidebar.
@@ -42,11 +42,4 @@ export function getTruncatedPreview(text: string): string {
  */
 export function isLongToolOutput(text: string): boolean {
   return text.length > TOOL_INLINE_THRESHOLD;
-}
-
-/**
- * Get full tool output content (for expanded view).
- */
-export function getFullToolOutput(text: string): string {
-  return text;
 }

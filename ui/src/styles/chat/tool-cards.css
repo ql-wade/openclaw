@@ -1,6 +1,7 @@
 /* Tool Card Styles */
 
-/* Expandable tool card styles */\n.chat-tool-card--expandable {
+/* Expandable tool card styles */
+.chat-tool-card--expandable {
   cursor: pointer;
 }
 
@@ -44,7 +45,8 @@
   word-break: break-word;
 }
 
-/* Mobile: ensure expanded output doesn't block chat */\n@media (max-width: 768px) {
+/* Mobile: ensure expanded output doesn't block chat */
+@media (max-width: 768px) {
   .chat-tool-card__output--expanded {
     max-height: 300px;
   }
