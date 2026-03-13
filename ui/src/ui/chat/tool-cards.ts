@@ -56,7 +56,6 @@ export function renderToolCardSidebar(card: ToolCard, _onOpenSidebar?: (content:
   // Issue #45040: Remove auto-open sidebar behavior to prevent blocking popup
   // Users can still manually open sidebar if needed
   const canClick = false;
-  const handleClick: (() => void) | undefined = undefined;
 
   const isShort = hasText && (card.text?.length ?? 0) <= TOOL_INLINE_THRESHOLD;
   const showCollapsed = hasText && !isShort;
@@ -66,20 +65,10 @@ export function renderToolCardSidebar(card: ToolCard, _onOpenSidebar?: (content:
   return html`
     <div
       class="chat-tool-card ${canClick ? "chat-tool-card--clickable" : ""}"
-      @click=${handleClick}
+      @click=${nothing}
       role=${canClick ? "button" : nothing}
       tabindex=${canClick ? "0" : nothing}
-      @keydown=${
-        canClick
-          ? (e: KeyboardEvent) => {
-              if (e.key !== "Enter" && e.key !== " ") {
-                return;
-              }
-              e.preventDefault();
-              handleClick?.();
-            }
-          : nothing
-      }
+      @keydown=${nothing}
     >
       <div class="chat-tool-card__header">
         <div class="chat-tool-card__title">
