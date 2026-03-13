@@ -7,7 +7,16 @@ export function resolveSessionLane(key: string) {
 
 export function resolveGlobalLane(lane?: string) {
   const cleaned = lane?.trim();
-  return cleaned ? cleaned : CommandLane.Main;
+  if (!cleaned) {
+    return CommandLane.Main;
+  }
+  // Map cron lane to nested to prevent deadlock when isolated cron jobs
+  // trigger inner operations (e.g. compaction). Outer execution holds the
+  // cron lane slot; inner work now uses nested lane.
+  if (cleaned === "cron") {
+    return CommandLane.Nested;
+  }
+  return cleaned;
 }
 
 export function resolveEmbeddedSessionLane(key: string) {
